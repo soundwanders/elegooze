@@ -1,10 +1,10 @@
 const CACHE = "aplc-v3";
 const ASSETS = [
-  "/",
-  "/index.html",
-  "/manifest.json",
-  "/icon-192.png",
-  "/icon-512.png"
+  "./",
+  "./index.html",
+  "./manifest.json",
+  "./icon-192.png",
+  "./icon-512.png"
 ];
 
 // Install: cache all assets
@@ -41,7 +41,7 @@ self.addEventListener("fetch", e => {
       }).catch(() => {
         // Offline fallback: return index.html for navigation requests
         if (e.request.mode === "navigate") {
-          return caches.match("/index.html");
+          return caches.match("./index.html");
         }
       });
     })
