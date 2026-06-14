@@ -1,7 +1,7 @@
 {
-  "name": "Arduino → PLC Curriculum",
-  "short_name": "Arduino→PLC",
-  "description": "Hands-on lab curriculum from Arduino to industrial PLC programming",
+  "name": "Elegooze",
+  "short_name": "Elegooze",
+  "description": "Hands-on lab curriculum from Arduino to PLC programming",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0D1117",
