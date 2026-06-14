@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0D1117" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Arduino→PLC" />
+  <title>Arduino → PLC Curriculum</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon-192.png" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { height: 100%; }
+    body {
+      font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #0D1117;
+      color: #E6EDF3;
+      min-height: 100%;
+      min-height: 100dvh;
+      overscroll-behavior: none;
+    }
+    button { font-family: inherit; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #30363D; border-radius: 2px; }
+
+    /* PIN screen */
+    #pin-screen {
+      position: fixed; inset: 0; background: #0D1117;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 24px; padding: 32px; z-index: 100;
+    }
+    #pin-screen.hidden { display: none; }
+    .pin-logo { font-size: 48px; }
+    .pin-title { font-size: 20px; font-weight: 800; color: #F0F6FC; }
+    .pin-subtitle { font-size: 13px; color: #8B949E; text-align: center; max-width: 260px; }
+    .pin-dots { display: flex; gap: 12px; }
+    .pin-dot {
+      width: 14px; height: 14px; border-radius: 50%;
+      border: 2px solid #30363D; background: transparent;
+      transition: all 0.15s;
+    }
+    .pin-dot.filled { background: #00A878; border-color: #00A878; }
+    .pin-dot.error { background: #E76F51; border-color: #E76F51; }
+    .pin-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 10px; width: 240px;
+    }
+    .pin-btn {
+      height: 60px; border-radius: 12px;
+      border: 1px solid #21262D; background: #161B22;
+      color: #F0F6FC; font-size: 22px; font-weight: 600;
+      cursor: pointer; transition: all 0.1s; user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .pin-btn:active { background: #21262D; transform: scale(0.96); }
+    .pin-btn.del { font-size: 16px; color: #8B949E; }
+    .pin-btn.empty { border-color: transparent; background: transparent; cursor: default; }
+    .pin-error { font-size: 12px; color: #E76F51; height: 16px; }
+    .pin-setup-note { font-size: 11px; color: #484F58; text-align: center; max-width: 240px; line-height: 1.5; }
+
+    /* App */
+    #app { display: flex; flex-direction: column; min-height: 100dvh; }
+    #app.hidden { display: none; }
+
+    /* Header */
+    .header {
+      background: #0D1117;
+      border-bottom: 1px solid #21262D;
+      padding: 18px 16px 0;
+      position: sticky; top: 0; z-index: 10;
+    }
+    .header-inner { max-width: 860px; margin: 0 auto; }
+    .header-top {
+      display: flex; align-items: flex-start;
+      justify-content: space-between; gap: 12px;
+      flex-wrap: wrap; margin-bottom: 14px;
+    }
+    .header-titles { flex: 1; min-width: 0; }
+    .header-kicker {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+      color: #00A878; text-transform: uppercase; margin-bottom: 4px;
+    }
+    .header-h1 {
+      font-size: clamp(14px, 4vw, 21px);
+      font-weight: 800; color: #F0F6FC; line-height: 1.2; margin-bottom: 2px;
+    }
+    .header-sub { font-size: 11px; color: #8B949E; }
+    .progress-badge {
+      background: #161B22; border: 1px solid #21262D;
+      border-radius: 10px; padding: 9px 13px;
+      text-align: center; flex-shrink: 0;
+    }
+    .progress-pct { font-size: 22px; font-weight: 800; color: #00A878; line-height: 1; }
+    .progress-label { font-size: 10px; color: #8B949E; margin-top: 2px; }
+    .progress-bar-wrap { margin-top: 5px; height: 3px; background: #21262D; border-radius: 2px; overflow: hidden; width: 72px; }
+    .progress-bar { height: 100%; background: linear-gradient(90deg,#00A878,#0077B6); border-radius: 2px; transition: width 0.5s ease; }
+
+    .phase-tabs { display: flex; gap: 3px; overflow-x: auto; padding-bottom: 0; scrollbar-width: none; }
+    .phase-tabs::-webkit-scrollbar { display: none; }
+    .phase-tab {
+      flex-shrink: 0; padding: 7px 10px; border-radius: 8px 8px 0 0;
+      border: 1px solid #21262D; border-bottom: 1px solid #21262D;
+      cursor: pointer; font-size: 12px; font-weight: 600;
+      background: transparent; color: #8B949E;
+      display: flex; align-items: center; gap: 5px;
+      position: relative; bottom: -1px; transition: all 0.15s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .phase-tab.active { background: #161B22; color: #F0F6FC; }
+    .phase-badge {
+      font-size: 9px; padding: 1px 4px; border-radius: 3px;
+      background: #21262D; color: #484F58;
+    }
+
+    /* Content */
+    .content { max-width: 860px; margin: 0 auto; padding: 0 16px 32px; flex: 1; }
+
+    .phase-banner {
+      background: #161B22; border: 1px solid var(--phase-color);
+      border-top: none; border-radius: 0 0 10px 10px;
+      padding: 11px 16px 13px; margin-bottom: 14px;
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    .phase-banner-icon { font-size: 24px; }
+    .phase-banner-text { flex: 1; min-width: 0; }
+    .phase-banner-kicker { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--phase-color); }
+    .phase-banner-title { font-size: 15px; font-weight: 800; color: #F0F6FC; }
+    .phase-banner-sub { font-size: 11px; color: #8B949E; }
+    .phase-banner-progress { text-align: right; flex-shrink: 0; }
+    .phase-banner-label { font-size: 10px; color: #8B949E; margin-bottom: 3px; }
+    .phase-mini-bar { width: 72px; height: 3px; background: #21262D; border-radius: 2px; overflow: hidden; }
+    .phase-mini-fill { height: 100%; background: var(--phase-color); border-radius: 2px; transition: width 0.4s ease; }
+
+    /* Unit list */
+    .unit-list { display: flex; flex-direction: column; gap: 8px; }
+    .unit-card {
+      background: #161B22; border: 1px solid #21262D;
+      border-radius: 10px; cursor: pointer; transition: border-color 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .unit-card.done { border-color: var(--phase-color); }
+    .unit-card.in-progress { border-color: var(--phase-color-mid); }
+    .unit-card-inner { padding: 12px 13px; display: flex; align-items: flex-start; gap: 10px; }
+    .unit-circle {
+      width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; margin-top: 1px;
+      background: #21262D; color: #8B949E;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 12px; transition: all 0.2s;
+    }
+    .unit-circle.done { background: var(--phase-color); color: #fff; }
+    .unit-body { flex: 1; min-width: 0; }
+    .unit-title-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 3px; }
+    .unit-title { font-size: 13px; font-weight: 700; color: #F0F6FC; }
+    .unit-type-badge {
+      font-size: 10px; padding: 1px 6px; border-radius: 20px;
+      background: var(--phase-dim); color: var(--phase-color); font-weight: 600;
+    }
+    .unit-duration { font-size: 10px; color: #8B949E; }
+    .unit-goal { margin: 0 0 5px; color: #8B949E; font-size: 12px; line-height: 1.5; }
+    .step-mini-label { font-size: 10px; margin-bottom: 2px; color: var(--phase-color); }
+    .step-mini-bar { height: 3px; background: #21262D; border-radius: 2px; overflow: hidden; margin-bottom: 5px; }
+    .step-mini-fill { height: 100%; background: var(--phase-color); border-radius: 2px; }
+    .concept-chips { display: flex; flex-wrap: wrap; gap: 3px; }
+    .concept-chip { font-size: 10px; padding: 1px 6px; border-radius: 5px; background: #21262D; color: #8B949E; }
+    .unit-toggle {
+      width: 38px; height: 38px; border-radius: 8px; flex-shrink: 0;
+      background: transparent; color: #484F58;
+      border: 1px solid #30363D; cursor: pointer; font-size: 16px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s; -webkit-tap-highlight-color: transparent;
+    }
+    .unit-toggle.done { background: #1a3a2a; color: #00A878; border-color: #00A878; }
+
+    /* Unit detail */
+    .back-btn {
+      background: #161B22; border: 1px solid #21262D; color: #8B949E;
+      padding: 6px 12px; border-radius: 8px; cursor: pointer;
+      font-size: 12px; margin-bottom: 12px; margin-top: 14px;
+      display: inline-flex; align-items: center; gap: 5px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .unit-header {
+      background: #161B22; border: 1px solid var(--phase-color);
+      border-radius: 10px; padding: 14px 16px; margin-bottom: 8px;
+    }
+    .unit-header-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .unit-header-kicker { font-size: 10px; color: var(--phase-color); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 3px; }
+    .unit-header-h2 { font-size: clamp(14px,4vw,19px); font-weight: 800; color: #F0F6FC; line-height: 1.2; margin-bottom: 5px; }
+    .unit-header-goal { font-size: 13px; color: #8B949E; line-height: 1.6; }
+    .unit-header-goal strong { color: #C9D1D9; }
+    .mark-done-btn {
+      padding: 7px 13px; border-radius: 8px; cursor: pointer; flex-shrink: 0;
+      background: transparent; color: #8B949E;
+      border: 1px solid #30363D; font-size: 12px; font-weight: 700;
+      transition: all 0.2s; -webkit-tap-highlight-color: transparent;
+    }
+    .mark-done-btn.done { background: #00A878; color: #fff; border-color: #00A878; }
+    .concept-chips-detail { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
+    .concept-chip-detail {
+      font-size: 11px; padding: 2px 7px; border-radius: 20px;
+      background: var(--phase-dim); color: var(--phase-color);
+      font-weight: 600; border: 1px solid var(--phase-color-faint);
+    }
+
+    .info-card { background: #161B22; border: 1px solid #21262D; border-radius: 10px; padding: 12px 15px; margin-bottom: 7px; }
+    .info-card-plc { border-color: var(--phase-color-faint); }
+    .info-card-label { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+    .info-card-text { font-size: 13px; color: #C9D1D9; line-height: 1.75; }
+
+    .lab-card { background: #161B22; border: 1px solid #21262D; border-radius: 10px; overflow: hidden; margin-bottom: 8px; }
+    .lab-header {
+      width: 100%; padding: 12px 15px; background: transparent; border: none;
+      cursor: pointer; text-align: left; display: flex; align-items: center;
+      justify-content: space-between; gap: 10px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .lab-header-left { display: flex; align-items: center; gap: 9px; flex: 1; min-width: 0; }
+    .lab-icon {
+      width: 27px; height: 27px; border-radius: 7px;
+      background: var(--phase-dim); color: var(--phase-color);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; flex-shrink: 0;
+    }
+    .lab-title { font-size: 13px; font-weight: 700; color: #F0F6FC; }
+    .lab-progress { font-size: 10px; color: #8B949E; margin-top: 1px; }
+    .lab-progress.active { color: var(--phase-color); }
+    .lab-chevron { color: #8B949E; font-size: 13px; flex-shrink: 0; }
+    .lab-body { padding: 0 15px 15px; }
+    .lab-steps { border-top: 1px solid #21262D; padding-top: 11px; }
+    .step-row {
+      display: flex; gap: 9px; margin-bottom: 8px;
+      align-items: flex-start; cursor: pointer; padding: 3px 2px;
+      border-radius: 5px; -webkit-tap-highlight-color: transparent;
+    }
+    .step-check {
+      width: 20px; height: 20px; border-radius: 5px; flex-shrink: 0; margin-top: 1px;
+      background: #21262D; border: 1px solid #30363D;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; color: #fff; transition: all 0.15s;
+    }
+    .step-check.done { background: var(--phase-color); border-color: var(--phase-color); }
+    .step-text { font-size: 13px; color: #C9D1D9; line-height: 1.6; transition: color 0.15s; }
+    .step-text.done { color: #484F58; text-decoration: line-through; }
+    .checkpoint {
+      margin-top: 11px; padding: 9px 12px; border-radius: 7px;
+      background: #0D1117; border: 1px solid #30363D;
+    }
+    .checkpoint-label { font-size: 9px; font-weight: 700; color: #00A878; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 3px; }
+    .checkpoint-text { font-size: 12px; color: #C9D1D9; font-style: italic; line-height: 1.6; }
+
+    .next-unit-btn {
+      width: 100%; padding: 12px 15px; border-radius: 10px; cursor: pointer;
+      background: #161B22; color: #F0F6FC; font-size: 13px; font-weight: 600;
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .next-unit-kicker { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 2px; }
+    .next-divider { margin-top: 14px; padding-top: 12px; border-top: 1px solid #21262D; }
+    .complete-card {
+      margin-top: 14px; padding: 16px; border-radius: 10px;
+      background: #161B22; border: 1px solid #00A87844; text-align: center;
+    }
+
+    /* Footer */
+    .footer {
+      max-width: 860px; margin: 22px auto 0; padding: 12px 16px 16px;
+      border-top: 1px solid #21262D;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+    }
+    .footer-text { font-size: 10px; color: #484F58; }
+    .footer-actions { display: flex; align-items: center; gap: 12px; }
+    .footer-dots { display: flex; gap: 10px; align-items: center; }
+    .footer-dot-wrap { text-align: center; cursor: pointer; }
+    .footer-dot-label { font-size: 8px; color: #484F58; margin-top: 2px; }
+    .footer-dot-label.active { color: var(--dot-color); }
+
+    .data-btn {
+      font-size: 11px; padding: 5px 10px; border-radius: 7px;
+      border: 1px solid #21262D; background: transparent; color: #8B949E;
+      cursor: pointer; transition: all 0.15s; -webkit-tap-highlight-color: transparent;
+    }
+    .data-btn:active { background: #21262D; }
+
+    /* Toast */
+    #toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: #161B22; border: 1px solid #21262D; border-radius: 10px;
+      padding: 10px 18px; font-size: 13px; color: #F0F6FC;
+      transition: transform 0.3s ease; z-index: 200; white-space: nowrap;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* Data modal */
+    #data-modal {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      display: flex; align-items: flex-end; justify-content: center;
+      z-index: 150; padding: 16px;
+    }
+    #data-modal.hidden { display: none; }
+    .modal-sheet {
+      background: #161B22; border: 1px solid #21262D;
+      border-radius: 16px; padding: 20px; width: 100%; max-width: 480px;
+    }
+    .modal-title { font-size: 15px; font-weight: 800; color: #F0F6FC; margin-bottom: 4px; }
+    .modal-sub { font-size: 12px; color: #8B949E; margin-bottom: 18px; line-height: 1.5; }
+    .modal-btn {
+      width: 100%; padding: 13px 16px; border-radius: 10px; margin-bottom: 8px;
+      border: 1px solid #21262D; background: #0D1117; color: #F0F6FC;
+      font-size: 13px; font-weight: 600; cursor: pointer; text-align: left;
+      display: flex; align-items: center; gap: 10px; transition: background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .modal-btn:active { background: #21262D; }
+    .modal-btn-icon { font-size: 18px; width: 28px; text-align: center; }
+    .modal-btn-text { flex: 1; }
+    .modal-btn-desc { font-size: 11px; color: #8B949E; margin-top: 1px; font-weight: 400; }
+    .modal-cancel {
+      width: 100%; padding: 11px; border-radius: 10px; margin-top: 4px;
+      border: none; background: transparent; color: #8B949E;
+      font-size: 13px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+    }
+    #file-input { display: none; }
+  </style>
+</head>
+<body>
+
+<!-- PIN Screen -->
+<div id="pin-screen">
+  <div class="pin-logo">⚡</div>
+  <div class="pin-title">Arduino → PLC</div>
+  <div class="pin-subtitle" id="pin-subtitle">Enter your PIN to continue</div>
+  <div class="pin-dots" id="pin-dots">
+    <div class="pin-dot" id="d0"></div>
+    <div class="pin-dot" id="d1"></div>
+    <div class="pin-dot" id="d2"></div>
+    <div class="pin-dot" id="d3"></div>
+  </div>
+  <div class="pin-error" id="pin-error"></div>
+  <div class="pin-grid" id="pin-grid">
+    <button class="pin-btn" onclick="pinKey('1')">1</button>
+    <button class="pin-btn" onclick="pinKey('2')">2</button>
+    <button class="pin-btn" onclick="pinKey('3')">3</button>
+    <button class="pin-btn" onclick="pinKey('4')">4</button>
+    <button class="pin-btn" onclick="pinKey('5')">5</button>
+    <button class="pin-btn" onclick="pinKey('6')">6</button>
+    <button class="pin-btn" onclick="pinKey('7')">7</button>
+    <button class="pin-btn" onclick="pinKey('8')">8</button>
+    <button class="pin-btn" onclick="pinKey('9')">9</button>
+    <button class="pin-btn empty"></button>
+    <button class="pin-btn" onclick="pinKey('0')">0</button>
+    <button class="pin-btn del" onclick="pinDel()">⌫</button>
+  </div>
+  <div class="pin-setup-note" id="pin-setup-note"></div>
+</div>
+
+<!-- App -->
+<div id="app" class="hidden">
+  <div class="header">
+    <div class="header-inner">
+      <div class="header-top">
+        <div class="header-titles">
+          <div class="header-kicker">ELEGOO Mega R3 → Industrial Automation</div>
+          <h1 class="header-h1">From Arduino to Industrial Automation</h1>
+          <p class="header-sub">A hands-on lab curriculum for PLC &amp; controls programming</p>
+        </div>
+        <div class="progress-badge">
+          <div class="progress-pct" id="progress-pct">0%</div>
+          <div class="progress-label" id="progress-label">0/12 units</div>
+          <div class="progress-bar-wrap">
+            <div class="progress-bar" id="progress-bar" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+      <div class="phase-tabs" id="phase-tabs"></div>
+    </div>
+  </div>
+
+  <div class="content" id="content"></div>
+
+  <div class="footer">
+    <div class="footer-text">ELEGOO Mega R3 · ~10–12 weeks · auto-saved</div>
+    <div class="footer-actions">
+      <button class="data-btn" onclick="openDataModal()">💾 Backup</button>
+      <div class="footer-dots" id="footer-dots"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Data Modal -->
+<div id="data-modal" class="hidden" onclick="if(event.target===this)closeDataModal()">
+  <div class="modal-sheet">
+    <div class="modal-title">Progress Data</div>
+    <div class="modal-sub">Export saves a JSON file to your Downloads folder. Import restores from a previously exported file. Your PIN is not included in exports.</div>
+    <button class="modal-btn" onclick="exportData()">
+      <span class="modal-btn-icon">📤</span>
+      <div class="modal-btn-text">
+        <div>Export Progress</div>
+        <div class="modal-btn-desc">Download a backup file to your device</div>
+      </div>
+    </button>
+    <button class="modal-btn" onclick="triggerImport()">
+      <span class="modal-btn-icon">📥</span>
+      <div class="modal-btn-text">
+        <div>Import Progress</div>
+        <div class="modal-btn-desc">Restore from a previously exported file</div>
+      </div>
+    </button>
+    <button class="modal-btn" onclick="changePin()">
+      <span class="modal-btn-icon">🔐</span>
+      <div class="modal-btn-text">
+        <div>Change PIN</div>
+        <div class="modal-btn-desc">Set a new 4-digit PIN</div>
+      </div>
+    </button>
+    <button class="modal-btn" style="border-color:#E76F5133; color:#E76F51" onclick="confirmReset()">
+      <span class="modal-btn-icon">🗑️</span>
+      <div class="modal-btn-text">
+        <div>Reset All Progress</div>
+        <div class="modal-btn-desc">Cannot be undone — export first</div>
+      </div>
+    </button>
+    <button class="modal-cancel" onclick="closeDataModal()">Cancel</button>
+  </div>
+</div>
+
+<input type="file" id="file-input" accept=".json" onchange="importData(event)" />
+<div id="toast"></div>
+
+<script>
+// ─── Curriculum Data ──────────────────────────────────────────────────────────
+const CURRICULUM = {
+  phases: [
+    {
+      id:1, title:"Foundations", subtitle:"Electricity, circuits, and your first sketch",
+      weeks:"Weeks 1–3", icon:"⚡",
+      units:[
+        {
+          id:"1.1", title:"Your Workbench & The Arduino", type:"Lab", duration:"2–3 hrs",
+          goal:"Set up your environment and blink an LED without copying blindly.",
+          concepts:["Digital I/O","IDE setup","setup() vs loop()","Serial Monitor"],
+          labs:[{
+            title:"Blink — but understand it",
+            steps:[
+              "Install Arduino IDE. Connect your Mega via USB. Open the Blink example.",
+              "Before uploading: predict what each line does. Write your prediction in a notebook.",
+              "Upload. Watch it blink. Were you right?",
+              "Change the delay values. Make it blink SOS in Morse code (... --- ...).",
+              'Open the Serial Monitor. Add Serial.println("ON") and Serial.println("OFF") inside the loop. Observe the timing.',
+            ],
+            checkpoint:"You can explain why setup() runs once and loop() runs forever, in your own words.",
+          }],
+          theory:"Voltage is pressure. Current is flow. Resistance is friction. Ohm's Law: V = I × R. Your LED needs a resistor to limit current or it burns out — calculate the correct resistor value for a 5V pin, 2V LED forward voltage, and 20mA target current.",
+          connection:"In a PLC, the CPU scans inputs, executes logic, then updates outputs — one cycle at a time. That's Arduino's loop() at industrial scale.",
+        },
+        {
+          id:"1.2", title:"Digital Inputs — Reading the World", type:"Lab", duration:"2–3 hrs",
+          goal:"Read a button and use it to control an output. Understand pull-up/pull-down resistors.",
+          concepts:["pinMode INPUT","digitalRead()","Pull-up resistors","Debouncing"],
+          labs:[{
+            title:"Button-controlled LED",
+            steps:[
+              "Wire a pushbutton between pin 2 and GND. Use INPUT_PULLUP mode.",
+              "Read the button state and print it to Serial Monitor. Notice: it reads HIGH when NOT pressed. Why?",
+              "Light an LED while the button is held. Then invert it — LED off while held.",
+              "Add a second button. LED only lights when BOTH are pressed (AND logic). Then try OR logic.",
+              "Problem: fast presses sometimes register twice. Add a 50ms debounce delay and observe the difference.",
+            ],
+            checkpoint:"You can explain what floating inputs are and why pull-up resistors fix them.",
+          }],
+          theory:"Floating inputs are the enemy of reliable systems. An unconnected input pin reads random values from electrical noise. Pull-up resistors hold the line HIGH until a button actively pulls it LOW — the foundation of industrial discrete I/O wiring.",
+          connection:"PLC discrete inputs work exactly the same way: sensors, switches, and pushbuttons send ON/OFF signals. 24VDC is the industrial standard instead of 5V — but the logic is identical.",
+        },
+        {
+          id:"1.3", title:"Analog Signals — The World Isn't Binary", type:"Lab", duration:"2–3 hrs",
+          goal:"Read analog voltages and map them to useful ranges. Build a voltage divider.",
+          concepts:["analogRead() 0–1023","analogWrite() PWM","Voltage dividers","map() function"],
+          labs:[{
+            title:"Potentiometer → LED brightness",
+            steps:[
+              "Wire a potentiometer: outer pins to 5V and GND, middle (wiper) to analog pin A0.",
+              "Read A0 and print to Serial Monitor. Rotate the pot — watch the 0–1023 range.",
+              "Map the reading to 0–255 and use analogWrite() to control LED brightness.",
+              "Open Serial Plotter (Tools menu). Watch the live waveform as you turn the pot.",
+              "Add a second LED with inverted brightness: as one fades in, the other fades out.",
+            ],
+            checkpoint:"You can explain the difference between analogRead (ADC input) and analogWrite (PWM output), and why they're not the same thing.",
+          }],
+          theory:"analogWrite() doesn't output a true analog voltage — it uses Pulse Width Modulation (PWM): switching the output on and off thousands of times per second. At 50% duty cycle, a device sees roughly half voltage. This is how motor speed controllers, dimmers, and servo controllers work.",
+          connection:"PLCs use 4–20mA or 0–10V analog signals for sensors like pressure transducers, temperature probes, and flow meters. The Arduino's 0–5V ADC is the same concept, different voltage ranges.",
+        },
+      ],
+    },
+    {
+      id:2, title:"Control Logic", subtitle:"Timing, sequencing, and making decisions",
+      weeks:"Weeks 4–6", icon:"🔁",
+      units:[
+        {
+          id:"2.1", title:"Timers Without delay()", type:"Lab", duration:"2–3 hrs",
+          goal:"Replace delay() with millis()-based timing. Understand why blocking code is dangerous.",
+          concepts:["millis()","Non-blocking timing","State variables","unsigned long"],
+          labs:[{
+            title:"Traffic Light Sequencer",
+            steps:[
+              "Build a 3-LED traffic light using delay(). It works — but notice you can't read a button while it's waiting.",
+              "Rewrite using millis(). Define a state variable: RED=0, YELLOW=1, GREEN=2.",
+              "In loop(), check if elapsed time > threshold, then advance the state.",
+              "Now add a pedestrian button. With millis(), you can check it every loop. With delay(), you couldn't.",
+              "Add a 4th state: WALK (flashing LED). Button triggers it, then it returns to the normal cycle.",
+            ],
+            checkpoint:"Your traffic light responds to the button at any point in the cycle, not just between delays.",
+          }],
+          theory:"delay() halts ALL program execution — the processor does nothing else. In real control systems, a stuck program can cause dangerous outcomes. Non-blocking code checks conditions and makes decisions continuously — this is exactly how PLCs operate: every scan cycle, every input is checked.",
+          connection:"PLC timers (TON, TOF, RTO in ladder logic) are non-blocking by nature. The PLC never stops scanning. This lab is your first taste of that mindset.",
+        },
+        {
+          id:"2.2", title:"Finite State Machines", type:"Lab", duration:"3–4 hrs",
+          goal:"Design and implement a proper FSM. This is the backbone of all industrial sequencing.",
+          concepts:["States & transitions","enum types","switch/case","State diagrams"],
+          labs:[{
+            title:"Vending Machine Logic",
+            steps:[
+              "On paper first: draw a state diagram. States: IDLE, COIN_INSERTED, DISPENSING, ERROR.",
+              "Transitions: button press, coin sensor (simulate with a button), timeout, reset.",
+              "Implement in Arduino using enum and switch/case. Each state has entry actions and exit conditions.",
+              "Add an LED or 3 LEDs to show current state visually.",
+              "Deliberately trigger the ERROR state (hold button too long). Implement a reset sequence.",
+              "Print state transitions to Serial Monitor: 'IDLE → COIN_INSERTED at t=1452ms'",
+            ],
+            checkpoint:"You can add a new state to your machine without rewriting existing states.",
+          }],
+          theory:"Every industrial machine can be described as a state machine. A CNC router: HOMING → READY → RUNNING → PAUSED → E-STOP. An elevator: IDLE → MOVING_UP → DOOR_OPENING → DOOR_OPEN → DOOR_CLOSING. When you program a PLC, you're implementing FSMs — sometimes with formal tools like GRAFCET/SFC.",
+          connection:"IEC 61131-3 Sequential Function Chart (SFC) is literally a visual FSM standard used in PLCs. This lab is direct preparation for SFC programming.",
+        },
+        {
+          id:"2.3", title:"Serial Communication & Sensors", type:"Lab", duration:"3 hrs",
+          goal:"Interface a real sensor. Parse data. Understand communication protocols.",
+          concepts:["UART/Serial","I2C basics","Sensor libraries","Data formatting"],
+          labs:[{
+            title:"Temperature Monitor with Alarms",
+            steps:[
+              "Wire the DHT11 temperature sensor (included in your kit).",
+              "Install the DHT library via Library Manager. Read temp + humidity every 2 seconds, non-blocking.",
+              "Print formatted output: 'Temp: 23.4C | Humidity: 55% | Status: NORMAL'",
+              "Add alarm thresholds: LED turns red above 30°C, green below. Buzzer activates at 35°C.",
+              "Log 60 readings with timestamps. Calculate min/max/average using running calculations.",
+              "Add a RESET button that clears the min/max tracking.",
+            ],
+            checkpoint:"Your monitor displays live data, tracks history, and triggers alarms — without any delays blocking the main loop.",
+          }],
+          theory:"Sensors communicate via protocols: UART (serial), I2C (two-wire, multiple devices), SPI (fast, one-to-one). The DHT11 uses a proprietary 1-wire timing protocol — that's why you need the library to handle the low-level bit-banging for you.",
+          connection:"Industrial sensors use 4–20mA (analog), HART (digital over analog wires), Modbus RTU (RS-485 serial), or Profibus. The protocols differ, but the pattern is the same: request data, parse response, act on values.",
+        },
+      ],
+    },
+    {
+      id:3, title:"Actuators & Outputs", subtitle:"Making things move",
+      weeks:"Weeks 7–9", icon:"⚙️",
+      units:[
+        {
+          id:"3.1", title:"Relays & High-Voltage Isolation", type:"Lab", duration:"3 hrs",
+          goal:"Use a relay module to control a real load. Understand isolation and why it matters.",
+          concepts:["Relay module wiring","NO / NC contacts","Flyback diodes","Fail-safe states"],
+          labs:[{
+            title:"Arduino-Controlled Relay",
+            steps:[
+              "Wire the relay module. DO NOT connect mains voltage — use a 12V DC lamp or DC load.",
+              "Write code to toggle the relay with a button. Observe the click and physical contact movement.",
+              "Test NC (Normally Closed) vs NO (Normally Open) terminals. Which stays on when power fails?",
+              "Build a timed relay: on for 5 seconds, off for 3 seconds, non-blocking with millis().",
+              "Add manual override: a second button forces the relay ON regardless of timer state.",
+              "Simulate a fault: if a third button is held, disable the relay entirely (safety lockout).",
+            ],
+            checkpoint:"You understand when to use NC vs NO contacts and why fail-safe states matter in real systems.",
+          }],
+          theory:"Relays are electromagnetic switches. Your 5V Arduino controls a coil that physically moves a metal contact — connecting or disconnecting a completely separate circuit. This galvanic isolation keeps high voltages away from your microcontroller.",
+          connection:"PLC output modules come in relay, transistor (DC), and triac (AC) types. Relay outputs: slower but handle any voltage. Transistor outputs: fast switching, DC only. Same tradeoffs exist at industrial scale.",
+        },
+        {
+          id:"3.2", title:"DC Motor Control", type:"Lab", duration:"3–4 hrs",
+          goal:"Control DC motor speed and direction. Understand H-bridges.",
+          concepts:["H-bridge / L298N","PWM speed control","Direction pins","Soft-start/stop"],
+          labs:[{
+            title:"Motor Speed & Direction Controller",
+            steps:[
+              "Wire the L298N motor driver (included in kit). Power the motor from a separate 9V supply.",
+              "Control direction with two digital pins. Control speed with PWM on the enable pin.",
+              "Potentiometer controls speed 0–100%. Button toggles direction.",
+              "Add a soft-start: ramp speed from 0 to target over 1 second to reduce current surge.",
+              "Add a soft-stop: decelerate gradually instead of cutting power instantly.",
+              "Implement basic stall detection: if speed is commanded but a timeout flag triggers, display alarm via Serial.",
+            ],
+            checkpoint:"Motor soft-starts and soft-stops smoothly. You can explain why abrupt starts mechanically stress gearboxes and belts.",
+          }],
+          theory:"An H-bridge uses four transistors in an 'H' arrangement to reverse the direction of current through a motor. Two fire at a time — one high-side, one low-side — on either side of the motor. PWM on the enable pin modulates average power delivered.",
+          connection:"Variable Frequency Drives (VFDs) are the industrial equivalent. They synthesize variable-frequency, variable-voltage AC to control induction motor speed. PLC → analog output → VFD is one of the most common automation architectures in manufacturing.",
+        },
+        {
+          id:"3.3", title:"Servo & Stepper Motors", type:"Lab", duration:"3–4 hrs",
+          goal:"Achieve precise position control. Understand open-loop vs closed-loop positioning.",
+          concepts:["Servo PWM protocol","Stepper step/dir","Steps per revolution","Open vs closed loop"],
+          labs:[{
+            title:"Positional Control System",
+            steps:[
+              "Wire a servo motor. Use the Servo library. Map potentiometer 0–1023 to 0°–180°.",
+              "Add position presets: button 1 = 0°, button 2 = 90°, button 3 = 180°.",
+              "Add smooth movement: instead of jumping, increment 1° per 10ms timer tick toward the target.",
+              "Wire a stepper motor with its included driver. Configure steps per revolution.",
+              "Control stepper: CW 200 steps, pause 1s, CCW 200 steps. Repeat. Time the full cycle.",
+              "Make the stepper track the potentiometer position in real time.",
+            ],
+            checkpoint:"You can explain the key difference: a servo motor knows its actual position via encoder feedback; a stepper motor assumes it reaches its commanded position (open loop).",
+          }],
+          theory:"Servo motors have built-in encoders that report actual shaft position back to the drive — that's closed-loop control. Stepper motors count electrical pulses and trust that no step is missed. Steppers are simpler and cheaper; servos are more precise and reliable under varying loads.",
+          connection:"Industrial servo drives receive position commands from PLCs via pulse-train (step + direction), analog voltage, or fieldbus protocols like EtherNet/IP. The step + direction interface you used with the stepper driver is exactly how PLC pulse-train outputs work.",
+        },
+      ],
+    },
+    {
+      id:4, title:"Systems Thinking", subtitle:"Combining components into real control systems",
+      weeks:"Weeks 10–12", icon:"🏭",
+      units:[
+        {
+          id:"4.1", title:"Capstone: Simulated Industrial Process", type:"Capstone Lab", duration:"6–10 hrs",
+          goal:"Design and build a complete process control system from scratch with no hand-holding.",
+          concepts:["System architecture","I/O mapping table","Safety interlocks","LCD HMI"],
+          labs:[{
+            title:"Liquid Fill Station",
+            steps:[
+              "DESIGN PHASE — do not write code yet. Draw the system on paper. Inputs: Start button, Stop button, HC-SR04 level sensor (simulating fill level), door interlock switch. Outputs: fill valve (relay), conveyor motor (L298N), alarm buzzer, status LEDs.",
+              "Create a formal I/O table: list every signal, its pin number, type (DI/DO/AI/AO), and its normal/safe state.",
+              "Draw your complete state diagram: IDLE → FILLING → FULL → CONVEYING → IDLE. Add an ALARM state reachable from any state.",
+              "Define all safety interlocks in writing before touching code: door must be closed to fill; E-stop halts everything and requires manual reset.",
+              "Implement and test each state individually before wiring the next subsystem.",
+              "Add LCD display showing: current state name, fill percentage, cycle count, last alarm code.",
+              "Run 20 complete unattended cycles. Log any failures. Fix them. Write a short post-mortem on what broke and why.",
+            ],
+            checkpoint:"System completes 20 consecutive cycles without intervention. E-stop works at any point in any state. LCD shows accurate real-time status.",
+          }],
+          theory:"Every industrial machine has the same fundamental structure: sensors report the physical world to the controller, the controller executes logic, actuators change the physical world. A PLC is a hardened Arduino with standardized I/O modules, deterministic scan times, and industrial safety certifications.",
+          connection:"This project IS what a PLC does. When you move to an actual PLC, you'll redraw your state machine in ladder logic or structured text — but the process logic you designed here transfers directly. The engineering thinking is identical.",
+        },
+        {
+          id:"4.2", title:"Introduction to PLC Concepts", type:"Conceptual + Simulation", duration:"4–5 hrs",
+          goal:"Map everything you've learned to PLC terminology and architecture. Write your first ladder logic.",
+          concepts:["Scan cycle","Ladder logic rungs","IEC 61131-3 languages","Codesys simulation"],
+          labs:[{
+            title:"Translate Your Arduino to Ladder Logic",
+            steps:[
+              "Download Codesys (free PLC simulation software at codesys.com). Install and create a new project.",
+              "Draw your Traffic Light FSM from Phase 2 as a ladder diagram. Identify contacts (input conditions) and coils (output actions).",
+              "Identify PLC timer equivalents: TON (timer on-delay), TOF (timer off-delay), RTO (retentive timer).",
+              "Simulate your ladder in Codesys. Watch the scan cycle execute in the debugger. Set breakpoints.",
+              "Translate your Fill Station I/O table into a Codesys variable table with I/O addresses.",
+              "Write 10 rungs of ladder logic for the IDLE → FILLING transition including the door interlock.",
+              "Reflect: how many Arduino lines vs ladder rungs? Which is easier to troubleshoot? Why might an electrician prefer ladder?",
+            ],
+            checkpoint:"You can point to any rung in your ladder and identify the exact equivalent section of your Arduino code.",
+          }],
+          theory:"Ladder logic was designed to resemble relay wiring diagrams so electricians could read machine programs without learning to code. Left power rail to right power rail: current flows through contacts (conditions) to energize coils (outputs). It is digital logic drawn as an electrical schematic.",
+          connection:"You now speak two languages: C++ and ladder logic. Industrial controls engineers need both — the PLC handles the machine, but HMI programming, data logging, and integration scripts often use higher-level languages on top.",
+        },
+        {
+          id:"4.3", title:"The Industrial Ecosystem", type:"Study + Research", duration:"3 hrs",
+          goal:"Understand what lies between your current Arduino skills and a first industry job or project.",
+          concepts:["PLC vendors & platforms","SCADA & HMI","Industrial networks","Safety standards"],
+          labs:[{
+            title:"Ecosystem Map & Career Path",
+            steps:[
+              "Research the three dominant PLC platforms: Allen-Bradley (Rockwell), Siemens, and Mitsubishi. For each: name their entry-level PLC model and programming software.",
+              "Download RSLogix Micro Starter Lite (free) from Rockwell. Create a simple motor start/stop program.",
+              "Find a free Siemens TIA Portal tutorial on YouTube. Follow the first 30 minutes and replicate the example.",
+              "Look up two job listings: Controls Technician and Controls Engineer. List required skills and certifications for each. Note the differences.",
+              "Research NFPA 70E (electrical safety) and OSHA 1910.147 (lockout/tagout). Write one paragraph on why these standards exist and what happens when they are ignored.",
+              "Write your personal next-steps plan: which PLC platform to focus on, what certification to pursue (SACA CAP, Siemens SITRAIN, Rockwell training), and a realistic 12-month timeline.",
+            ],
+            checkpoint:"You can name 3 PLC vendors with their software tools, and articulate the difference in scope between a Controls Technician and a Controls Engineer role.",
+          }],
+          theory:"Industrial automation uses a layered architecture called the Purdue Model (ISA-95): field devices at the bottom (sensors and actuators), PLCs at the control level, SCADA/HMI for supervision, then MES and ERP at the business level. Your Arduino experience spans the field and control levels.",
+          connection:"Arduino to PLC logic is the foundational skill transfer. Real industrial work adds: electrical safety codes (NFPA 70, NEC), industrial network protocols (EtherNet/IP, Profinet, Modbus TCP), program version control, change management, and coordination with mechanical and process engineers.",
+        },
+      ],
+    },
+  ],
+};
+
+// ─── Phase styling ────────────────────────────────────────────────────────────
+const PC = {
+  1:{color:"#00A878",dim:"#00A87820",mid:"#00A87866",faint:"#00A87844"},
+  2:{color:"#0077B6",dim:"#0077B620",mid:"#0077B666",faint:"#0077B644"},
+  3:{color:"#E76F51",dim:"#E76F5120",mid:"#E76F5166",faint:"#E76F5144"},
+  4:{color:"#7B2D8B",dim:"#7B2D8B20",mid:"#7B2D8B66",faint:"#7B2D8B44"},
+};
+const TYPE_LABELS = {
+  "Lab":"🔬 Lab","Capstone Lab":"🏆 Capstone",
+  "Conceptual + Simulation":"💻 Simulation","Study + Research":"📖 Research",
+};
+const ALL_UNIT_IDS = CURRICULUM.phases.flatMap(p => p.units.map(u => u.id));
+
+function findUnit(uid) {
+  for (const p of CURRICULUM.phases) {
+    const u = p.units.find(x => x.id === uid);
+    if (u) return {unit:u, phase:p};
+  }
+  return null;
+}
+
+// ─── Storage key ─────────────────────────────────────────────────────────────
+const SK = "aplc_v3";
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let state = {
+  completedUnits: {},
+  completedSteps: {},
+  lastOpenLab: {},
+  activePhase: 1,
+  activeUnit: null,
+};
+
+function loadState() {
+  try {
+    const r = localStorage.getItem(SK);
+    if (!r) return;
+    const s = JSON.parse(r);
+    state.completedUnits = s.completedUnits || {};
+    state.completedSteps = s.completedSteps || {};
+    state.lastOpenLab   = s.lastOpenLab   || {};
+    state.activePhase   = s.activePhase   || 1;
+    state.activeUnit    = s.activeUnit    || null;
+  } catch(e) { console.warn("State load failed", e); }
+}
+
+function saveState() {
+  try { localStorage.setItem(SK, JSON.stringify(state)); } catch(e) {}
+}
+
+// ─── PIN / Auth ───────────────────────────────────────────────────────────────
+const PIN_KEY   = "aplc_pin";
+const SETUP_KEY = "aplc_pin_set";
+let pinBuffer = "";
+let pinMode = "check"; // "check" | "setup" | "change"
+let pinFailCount = 0;
+let pinLockedUntil = 0;
+
+async function sha256(str) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+
+function getStoredPin() { return localStorage.getItem(PIN_KEY); }
+function isPinSet()     { return !!localStorage.getItem(SETUP_KEY); }
+
+async function pinKey(d) {
+  if (Date.now() < pinLockedUntil) return; // silently ignore input while locked
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += d;
+  updatePinDots();
+  if (pinBuffer.length === 4) {
+    await handlePinSubmit();
+  }
+}
+
+function pinDel() {
+  pinBuffer = pinBuffer.slice(0,-1);
+  updatePinDots();
+  document.getElementById("pin-error").textContent = "";
+  document.querySelectorAll(".pin-dot").forEach(el => el.classList.remove("error"));
+}
+
+function updatePinDots(error=false) {
+  for (let i=0;i<4;i++) {
+    const d = document.getElementById("d"+i);
+    d.classList.toggle("filled", i < pinBuffer.length && !error);
+    d.classList.toggle("error", error);
+  }
+}
+
+async function handlePinSubmit() {
+  const hash = await sha256(pinBuffer);
+  if (pinMode === "setup" || pinMode === "change") {
+    // First entry: store temporarily and ask for confirm
+    if (!window._pinFirstHash) {
+      window._pinFirstHash = hash;
+      window._pinFirst = pinBuffer;
+      pinBuffer = "";
+      updatePinDots();
+      document.getElementById("pin-subtitle").textContent = "Confirm your PIN";
+      document.getElementById("pin-setup-note").textContent = "";
+      return;
+    }
+    // Confirm entry
+    if (hash === window._pinFirstHash) {
+      localStorage.setItem(PIN_KEY, hash);
+      localStorage.setItem(SETUP_KEY, "1");
+      window._pinFirstHash = null;
+      window._pinFirst = null;
+      if (pinMode === "change") {
+        hidePinScreen();
+        showToast("PIN updated ✓");
+      } else {
+        hidePinScreen();
+      }
+    } else {
+      pinError("PINs don't match — try again");
+      window._pinFirstHash = null;
+      window._pinFirst = null;
+      document.getElementById("pin-subtitle").textContent = "Choose a 4-digit PIN";
+    }
+  } else {
+    // Check mode
+    const stored = getStoredPin();
+    if (hash === stored) {
+      pinFailCount = 0;
+      hidePinScreen();
+    } else {
+      pinFailCount++;
+      if (pinFailCount >= 5) {
+        pinLockedUntil = Date.now() + 30000;
+        pinFailCount = 0;
+        pinError("Too many attempts — wait 30s");
+        // Disable keypad visually during lockout
+        const countdown = setInterval(() => {
+          const remaining = Math.ceil((pinLockedUntil - Date.now()) / 1000);
+          if (remaining <= 0) {
+            clearInterval(countdown);
+            document.getElementById("pin-error").textContent = "";
+          } else {
+            document.getElementById("pin-error").textContent = `Too many attempts — wait ${remaining}s`;
+          }
+        }, 1000);
+      } else {
+        pinError(`Incorrect PIN (${5 - pinFailCount} attempt${5 - pinFailCount === 1 ? "" : "s"} left)`);
+      }
+    }
+  }
+}
+
+function pinError(msg) {
+  updatePinDots(true);
+  document.getElementById("pin-error").textContent = msg;
+  setTimeout(() => {
+    pinBuffer = "";
+    updatePinDots(false);
+    document.getElementById("pin-error").textContent = "";
+  }, 900);
+}
+
+function hidePinScreen() {
+  document.getElementById("pin-screen").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+  render();
+}
+
+function showPinScreen(mode="check") {
+  pinMode = mode;
+  pinBuffer = "";
+  window._pinFirstHash = null;
+  document.getElementById("pin-screen").classList.remove("hidden");
+  document.getElementById("app").classList.add("hidden");
+  document.getElementById("pin-error").textContent = "";
+  updatePinDots();
+  if (mode === "setup") {
+    document.getElementById("pin-subtitle").textContent = "Choose a 4-digit PIN";
+    document.getElementById("pin-setup-note").textContent = "You'll use this every time you open the app. Don't forget it — there's no recovery.";
+  } else if (mode === "change") {
+    document.getElementById("pin-subtitle").textContent = "Choose a new PIN";
+    document.getElementById("pin-setup-note").textContent = "";
+  } else {
+    document.getElementById("pin-subtitle").textContent = "Enter your PIN to continue";
+    document.getElementById("pin-setup-note").textContent = "";
+  }
+}
+
+// ─── Progress helpers ─────────────────────────────────────────────────────────
+function totalUnits() { return CURRICULUM.phases.reduce((s,p)=>s+p.units.length,0); }
+function completedCount() { return Object.values(state.completedUnits).filter(Boolean).length; }
+function progressPct() { return Math.round(completedCount()/totalUnits()*100); }
+
+function phaseCompletedCount(phase) { return phase.units.filter(u=>state.completedUnits[u.id]).length; }
+
+function unitStepKeys(unit) {
+  return unit.labs.flatMap((lab,li) => lab.steps.map((_,si) => `${unit.id}-${li}-${si}`));
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function render() {
+  renderHeader();
+  renderContent();
+}
+
+function renderHeader() {
+  const pct = progressPct();
+  document.getElementById("progress-pct").textContent = pct + "%";
+  document.getElementById("progress-label").textContent = completedCount()+"/"+totalUnits()+" units";
+  document.getElementById("progress-bar").style.width = pct + "%";
+  renderTabs();
+  renderFooterDots();
+}
+
+function renderTabs() {
+  const container = document.getElementById("phase-tabs");
+  container.innerHTML = "";
+  CURRICULUM.phases.forEach(p => {
+    const pc = PC[p.id];
+    const done = phaseCompletedCount(p);
+    const isActive = state.activePhase === p.id;
+    const btn = document.createElement("button");
+    btn.className = "phase-tab" + (isActive ? " active" : "");
+    btn.style.setProperty("--phase-color", pc.color);
+    if (isActive) {
+      btn.style.borderColor = pc.color;
+      btn.style.borderBottomColor = "#161B22";
+    }
+    btn.innerHTML = `<span>${p.icon}</span><span class="phase-badge" style="${isActive?`background:${pc.dim};color:${pc.color}`:""}">${done===p.units.length?"✓":`${done}/${p.units.length}`}</span>`;
+    btn.onclick = () => { state.activePhase = p.id; state.activeUnit = null; saveState(); render(); };
+    container.appendChild(btn);
+  });
+}
+
+function renderFooterDots() {
+  const container = document.getElementById("footer-dots");
+  container.innerHTML = "";
+  CURRICULUM.phases.forEach(p => {
+    const pc = PC[p.id];
+    const done = phaseCompletedCount(p);
+    const pct = Math.round(done/p.units.length*100);
+    const isActive = state.activePhase === p.id;
+    const wrap = document.createElement("div");
+    wrap.className = "footer-dot-wrap";
+    wrap.style.setProperty("--dot-color", pc.color);
+    // SVG ring
+    const size=12, r=5, circ=2*Math.PI*r, dash=(pct/100)*circ;
+    const svgColor = pct===100 ? pc.color : (pct>0 ? pc.color : "#30363D");
+    wrap.innerHTML = `
+      <svg width="${size}" height="${size}" style="display:block;transform:rotate(-90deg);${isActive?`outline:2px solid ${pc.color};outline-offset:1px;border-radius:50%`:""}">
+        <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="#30363D" stroke-width="2"/>
+        ${pct>0?`<circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${pc.color}" stroke-width="2" stroke-dasharray="${dash} ${circ}" stroke-linecap="round"/>`:""}
+      </svg>
+      <div class="footer-dot-label ${isActive?"active":""}">P${p.id}</div>
+    `;
+    wrap.onclick = () => { state.activePhase = p.id; state.activeUnit = null; saveState(); render(); };
+    container.appendChild(wrap);
+  });
+}
+
+function renderContent() {
+  const container = document.getElementById("content");
+  if (state.activeUnit) {
+    renderUnitDetail(container);
+  } else {
+    renderUnitList(container);
+  }
+}
+
+function renderUnitList(container) {
+  const phase = CURRICULUM.phases.find(p => p.id === state.activePhase);
+  const pc = PC[phase.id];
+  const donePct = Math.round(phaseCompletedCount(phase)/phase.units.length*100);
+
+  let html = `
+    <div class="phase-banner" style="--phase-color:${pc.color}">
+      <div class="phase-banner-icon">${phase.icon}</div>
+      <div class="phase-banner-text">
+        <div class="phase-banner-kicker">Phase ${phase.id} · ${phase.weeks}</div>
+        <div class="phase-banner-title">${phase.title}</div>
+        <div class="phase-banner-sub">${phase.subtitle}</div>
+      </div>
+      <div class="phase-banner-progress">
+        <div class="phase-banner-label">${phaseCompletedCount(phase)}/${phase.units.length} done</div>
+        <div class="phase-mini-bar"><div class="phase-mini-fill" style="width:${donePct}%"></div></div>
+      </div>
+    </div>
+    <div class="unit-list">
+  `;
+
+  phase.units.forEach((unit, idx) => {
+    const done = !!state.completedUnits[unit.id];
+    const keys = unitStepKeys(unit);
+    const doneSteps = keys.filter(k => state.completedSteps[k]).length;
+    const stepPct = keys.length>0 ? Math.round(doneSteps/keys.length*100) : 0;
+    const cardClass = done ? "done" : (doneSteps>0 ? "in-progress" : "");
+
+    html += `
+      <div class="unit-card ${cardClass}" style="--phase-color:${pc.color};--phase-color-mid:${pc.mid}" onclick="openUnit('${unit.id}')">
+        <div class="unit-card-inner">
+          <div class="unit-circle ${done?"done":""}">${done?"✓":idx+1}</div>
+          <div class="unit-body">
+            <div class="unit-title-row">
+              <span class="unit-title">${unit.title}</span>
+              <span class="unit-type-badge" style="--phase-color:${pc.color};--phase-dim:${pc.dim}">${TYPE_LABELS[unit.type]||"🔬 Lab"}</span>
+              <span class="unit-duration">⏱ ${unit.duration}</span>
+            </div>
+            <p class="unit-goal">${unit.goal}</p>
+            ${doneSteps>0&&!done?`
+              <div class="step-mini-label">${doneSteps}/${keys.length} steps done</div>
+              <div class="step-mini-bar" style="--phase-color:${pc.color}"><div class="step-mini-fill" style="width:${stepPct}%"></div></div>
+            `:""}
+            <div class="concept-chips">${unit.concepts.map(c=>`<span class="concept-chip">${c}</span>`).join("")}</div>
+          </div>
+          <button class="unit-toggle ${done?"done":""}" onclick="event.stopPropagation();toggleUnit('${unit.id}')">${done?"✓":"○"}</button>
+        </div>
+      </div>
+    `;
+  });
+
+  html += `</div>`;
+  container.innerHTML = html;
+}
+
+function renderUnitDetail(container) {
+  const lookup = findUnit(state.activeUnit);
+  if (!lookup) { state.activeUnit = null; saveState(); renderUnitList(container); return; }
+  const {unit, phase} = lookup;
+  const pc = PC[phase.id];
+  const done = !!state.completedUnits[unit.id];
+  const openLab = state.lastOpenLab[unit.id] || null;
+
+  const currentIdx = ALL_UNIT_IDS.indexOf(unit.id);
+  const nextId = currentIdx < ALL_UNIT_IDS.length-1 ? ALL_UNIT_IDS[currentIdx+1] : null;
+  const nextInfo = nextId ? findUnit(nextId) : null;
+
+  let html = `
+    <button class="back-btn" onclick="goBack()">← Back</button>
+    <div class="unit-header" style="--phase-color:${pc.color}">
+      <div class="unit-header-top">
+        <div>
+          <div class="unit-header-kicker">Unit ${unit.id} · ${unit.duration}</div>
+          <h2 class="unit-header-h2">${unit.title}</h2>
+          <p class="unit-header-goal"><strong>Goal:</strong> ${unit.goal}</p>
+        </div>
+        <button class="mark-done-btn ${done?"done":""}" onclick="toggleUnit('${unit.id}')">${done?"✓ Done":"Mark Done"}</button>
+      </div>
+      <div class="concept-chips-detail" style="--phase-color:${pc.color};--phase-dim:${pc.dim};--phase-color-faint:${pc.faint}">
+        ${unit.concepts.map(c=>`<span class="concept-chip-detail">${c}</span>`).join("")}
+      </div>
+    </div>
+
+    <div class="info-card" style="--phase-color:${pc.color}">
+      <div class="info-card-label" style="color:#E6AB00">📐 Theory &amp; Context</div>
+      <div class="info-card-text">${unit.theory}</div>
+    </div>
+
+    <div class="info-card info-card-plc" style="--phase-color:${pc.color};--phase-color-faint:${pc.faint};margin-bottom:10px">
+      <div class="info-card-label" style="color:${pc.color}">🏭 PLC Connection — Why This Matters</div>
+      <div class="info-card-text">${unit.connection}</div>
+    </div>
+  `;
+
+  unit.labs.forEach((lab, li) => {
+    const labKey = `${unit.id}-${li}`;
+    const isOpen = openLab === labKey;
+    const stepsDone = lab.steps.filter((_,si) => state.completedSteps[`${unit.id}-${li}-${si}`]).length;
+    const progressText = stepsDone===lab.steps.length
+      ? `${stepsDone}/${lab.steps.length} · ✓ complete`
+      : stepsDone>0 ? `${stepsDone}/${lab.steps.length} · in progress`
+      : `${stepsDone}/${lab.steps.length} steps`;
+
+    html += `
+      <div class="lab-card" style="--phase-color:${pc.color};--phase-dim:${pc.dim}">
+        <button class="lab-header" onclick="toggleLab('${labKey}','${unit.id}')">
+          <div class="lab-header-left">
+            <div class="lab-icon">🔬</div>
+            <div>
+              <div class="lab-title">${lab.title}</div>
+              <div class="lab-progress ${stepsDone>0?"active":""}">${progressText}</div>
+            </div>
+          </div>
+          <span class="lab-chevron">${isOpen?"▲":"▼"}</span>
+        </button>
+        ${isOpen ? `
+        <div class="lab-body">
+          <div class="lab-steps">
+            ${lab.steps.map((step,si) => {
+              const sk = `${unit.id}-${li}-${si}`;
+              const sd = !!state.completedSteps[sk];
+              return `
+                <div class="step-row" onclick="toggleStep('${sk}')">
+                  <div class="step-check ${sd?"done":""}">${sd?"✓":""}</div>
+                  <p class="step-text ${sd?"done":""}">${step}</p>
+                </div>
+              `;
+            }).join("")}
+          </div>
+          <div class="checkpoint">
+            <div class="checkpoint-label">✓ Checkpoint</div>
+            <p class="checkpoint-text">${lab.checkpoint}</p>
+          </div>
+        </div>
+        ` : ""}
+      </div>
+    `;
+  });
+
+  if (nextInfo) {
+    const npc = PC[nextInfo.phase.id];
+    html += `
+      <div class="next-divider">
+        <button class="next-unit-btn" style="border:1px solid ${npc.color}44" onclick="openUnit('${nextId}')">
+          <div>
+            <div class="next-unit-kicker" style="color:${npc.color}">Next · Unit ${nextId}</div>
+            <div>${nextInfo.unit.title}</div>
+          </div>
+          <span style="color:${npc.color};font-size:18px">→</span>
+        </button>
+      </div>
+    `;
+  } else {
+    html += `
+      <div class="complete-card">
+        <div style="font-size:22px;margin-bottom:5px">🏆</div>
+        <div style="font-size:13px;font-weight:700;color:#00A878">Curriculum Complete</div>
+        <div style="font-size:11px;color:#8B949E;margin-top:3px">Time to apply for that Controls Technician role.</div>
+      </div>
+    `;
+  }
+
+  container.innerHTML = html;
+}
+
+// ─── Actions ──────────────────────────────────────────────────────────────────
+function openUnit(uid) {
+  const info = findUnit(uid);
+  if (!info) return;
+  state.activeUnit = uid;
+  state.activePhase = info.phase.id;
+  saveState();
+  render();
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+function goBack() {
+  state.activeUnit = null;
+  saveState();
+  render();
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+function toggleUnit(uid) {
+  state.completedUnits[uid] = !state.completedUnits[uid];
+  saveState();
+  // Full content re-render needed here because done state changes card border,
+  // circle color, and mark-done button — simpler and correct to re-render content.
+  // Header is updated separately to avoid rebuilding tabs/dots unnecessarily.
+  renderContent();
+  renderHeader();
+}
+
+function toggleStep(sk) {
+  state.completedSteps[sk] = !state.completedSteps[sk];
+  saveState();
+
+  // Targeted update — find and flip just the affected step row
+  const done = state.completedSteps[sk];
+  const rows = document.querySelectorAll(".step-row");
+  rows.forEach(row => {
+    if (row.getAttribute("onclick") === `toggleStep('${sk}')`) {
+      const check = row.querySelector(".step-check");
+      const text  = row.querySelector(".step-text");
+      check.classList.toggle("done", done);
+      check.textContent = done ? "✓" : "";
+      text.classList.toggle("done", done);
+    }
+  });
+
+  // Update the lab progress label (step count) without full re-render
+  // Find the unit/lab this step belongs to and refresh just that label
+  const parts = sk.split("-"); // e.g. "1.1-0-2"
+  const unitId = parts.slice(0,2).join("-");
+  const labIdx = parseInt(parts[2]);
+  const info = findUnit(unitId);
+  if (info) {
+    const lab = info.unit.labs[labIdx];
+    if (lab) {
+      const totalSteps = lab.steps.length;
+      const doneSteps = lab.steps.filter((_,si) => state.completedSteps[`${unitId}-${labIdx}-${si}`]).length;
+      const progressText = doneSteps === totalSteps
+        ? `${doneSteps}/${totalSteps} · ✓ complete`
+        : doneSteps > 0 ? `${doneSteps}/${totalSteps} · in progress`
+        : `${doneSteps}/${totalSteps} steps`;
+      // Find the lab card for this lab
+      const labHeaders = document.querySelectorAll(".lab-progress");
+      // labHeaders index matches lab order within unit
+      if (labHeaders[labIdx]) {
+        labHeaders[labIdx].textContent = progressText;
+        labHeaders[labIdx].classList.toggle("active", doneSteps > 0);
+      }
+    }
+  }
+
+  // Refresh header progress numbers (unit count doesn't change but step bar on list might)
+  renderHeader();
+}
+
+function toggleLab(labKey, unitId) {
+  const current = state.lastOpenLab[unitId] || null;
+  state.lastOpenLab[unitId] = current === labKey ? null : labKey;
+  saveState();
+  renderContent();
+}
+
+// ─── Data modal ───────────────────────────────────────────────────────────────
+function openDataModal()  { document.getElementById("data-modal").classList.remove("hidden"); }
+function closeDataModal() { document.getElementById("data-modal").classList.add("hidden"); }
+
+function exportData() {
+  closeDataModal();
+  const payload = {
+    version: 3,
+    exported: new Date().toISOString(),
+    completedUnits: state.completedUnits,
+    completedSteps: state.completedSteps,
+    lastOpenLab: state.lastOpenLab,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `arduino-plc-progress-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast("Progress exported ✓");
+}
+
+function triggerImport() {
+  closeDataModal();
+  document.getElementById("file-input").click();
+}
+
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!data.completedUnits) throw new Error("Invalid file");
+      state.completedUnits = data.completedUnits || {};
+      state.completedSteps = data.completedSteps || {};
+      state.lastOpenLab   = data.lastOpenLab   || {};
+      saveState();
+      render();
+      showToast("Progress restored ✓");
+    } catch {
+      showToast("⚠️ Invalid backup file");
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = "";
+}
+
+function changePin() {
+  closeDataModal();
+  showPinScreen("change");
+}
+
+function confirmReset() {
+  closeDataModal();
+  if (confirm("Reset all progress? This cannot be undone. Export first if you want a backup.")) {
+    state.completedUnits = {};
+    state.completedSteps = {};
+    state.lastOpenLab = {};
+    state.activeUnit = null;
+    saveState();
+    render();
+    showToast("Progress reset");
+  }
+}
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2500);
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+loadState();
+
+if (!isPinSet()) {
+  showPinScreen("setup");
+} else {
+  showPinScreen("check");
+}
+
+// Register service worker
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(()=>{});
+}
+</script>
+</body>
+</html>
