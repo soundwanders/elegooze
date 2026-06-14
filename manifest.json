@@ -1,8 +1,8 @@
 {
-  "name": "Elegooze",
+  "name": "Elegooze Arduino PLC Trainer",
   "short_name": "Elegooze",
   "description": "Hands-on lab curriculum from Arduino to PLC programming",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#0D1117",
   "theme_color": "#0D1117",
