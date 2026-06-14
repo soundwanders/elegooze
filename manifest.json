@@ -1,0 +1,24 @@
+{
+  "name": "Arduino → PLC Curriculum",
+  "short_name": "Arduino→PLC",
+  "description": "Hands-on lab curriculum from Arduino to industrial PLC programming",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0D1117",
+  "theme_color": "#0D1117",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
